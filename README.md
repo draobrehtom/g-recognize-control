@@ -1,3 +1,4 @@
+:warning: Be care - not stable
 #Install
 1. clone repository
 2. import `opencv310` java sdk module
