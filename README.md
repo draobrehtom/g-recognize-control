@@ -7,15 +7,16 @@
 
 If you have problem with :app:compileDebugNdk
 
-Specifically:
+Specify path:
+`{YourApp} / app / build.gradle`
 
-{YourApp} / app / build.gradle
-And not the build.gradle at the root of the project.
 Place it inside the "defaultConfig" section.
 
+```
 defaultConfig {
     ....
     sourceSets.main {
         jniLibs.srcDir 'src/main/libs'
         jni.srcDirs = [] //disable automatic ndk-build call
     }
+```
