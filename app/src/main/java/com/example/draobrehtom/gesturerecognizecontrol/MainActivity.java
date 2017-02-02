@@ -1,5 +1,6 @@
 package com.example.draobrehtom.gesturerecognizecontrol;
 
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -19,7 +20,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     static {
         System.loadLibrary("MyLibs");
-//        Log.d(TAG, NativeClass.getMessageFromJNI());
+        Log.d(TAG, NativeClass.getMessageFromJNI());
         if (!OpenCVLoader.initDebug()) {
             Log.d(TAG, "OpenCV not Loaded");
         } else {
@@ -51,7 +52,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         javaCameraView = (JavaCameraView) findViewById(R.id.java_camera_view);
         javaCameraView.setVisibility(View.VISIBLE);
         javaCameraView.setCvCameraViewListener(this);
-
+        Intent intent = new Intent(this, HandTrackingActivity.class);
+        startActivity(intent);
     }
 
     @Override

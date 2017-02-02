@@ -4,3 +4,5 @@ JNIEXPORT jstring JNICALL Java_com_example_draobrehtom_gesturerecognizecontrol_N
   (JNIEnv *env, jclass obj) {
     return env->NewStringUTF("This message from JNI");
 }
+
+
