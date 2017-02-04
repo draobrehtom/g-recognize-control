@@ -13,7 +13,9 @@ import org.opencv.core.Core.MinMaxLocResult;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
+import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -33,8 +35,8 @@ import android.view.View.OnTouchListener;
 
 public class HandTrackingActivity extends Activity implements OnTouchListener, CvCameraViewListener2 {
     private static final String TAG = "OCVSample::Activity";
-    private int Height = 720;
-    private int Width  = 1280;
+    private int Height = 400;
+    private int Width  = 600;
 
     private final double alpha = 2.0;
     private final double beta = 0.0;
@@ -51,6 +53,22 @@ public class HandTrackingActivity extends Activity implements OnTouchListener, C
     Mat mOutput;
     Mat threshold;
     Mat mHierarchy;
+
+    // Own implementation
+    Mat frame;
+    Mat currentFrame;
+    Mat previosFrame;
+    Mat resultFrame;
+    Mat v = new Mat();
+
+    Scalar scalar1 = new Scalar(0,0,255);
+    Scalar scalar2 = new Scalar(0,255,0);
+
+    Size size = new Size(3,3);
+    int index = 0;
+    int sensivity = 30;
+    double maxArea = 30;
+
     Point[] squares;
     Point touched;
     int[][] min_range;
@@ -65,6 +83,11 @@ public class HandTrackingActivity extends Activity implements OnTouchListener, C
         setContentView(R.layout.activity_hand_tracking);
 
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.handtracking_activity_java_surface_view);
+
+        mOpenCvCameraView.setMaxFrameSize(Height, Width);
+        mOpenCvCameraView.disableView();
+        mOpenCvCameraView.enableView();
+
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
         mOpenCvCameraView.setOnTouchListener(HandTrackingActivity.this);
@@ -95,33 +118,70 @@ public class HandTrackingActivity extends Activity implements OnTouchListener, C
     }
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-        Mat blurredImage = new Mat();
-        Mat hsvImage = new Mat();
-        Mat mask = new Mat();
-        Mat morphOutput = new Mat();
-        Mat frame = inputFrame.rgba();
+        mRgba = inputFrame.rgba();
+        if(!haveRange){
+            for(int i=0; i < squares.length; i+=2) {
+                Imgproc.rectangle(mRgba, squares[i], squares[i+1], new Scalar(255, 0, 0), 5);
+            }
+            Imgproc.putText(mRgba, "Position your hand on the squares and tap", new Point(mRgba.cols()*0.25, mRgba.rows()*0.9),
+                    Core.FONT_HERSHEY_SIMPLEX, 1.0, new Scalar(255, 0, 0), 2);
+            mOutput = mRgba;
+        } else {
+            if(Width/3 > 320)	Imgproc.resize(mRgba, mRgba, new Size(Width/3, Height/3));
+            //mRgba.convertTo(mRgba, -1, alpha, beta);
+            Imgproc.cvtColor(mRgba, mHsv, Imgproc.COLOR_RGB2HSV);
+            mOutput = null;
+            for(int i=0; i<squares.length;i++) {
+                Core.inRange(mHsv, new Scalar(min_range[i][0], min_range[i][1], min_range[i][2]),
+                        new Scalar(max_range[i][0], max_range[i][1], max_range[i][2]), threshold);
+                Imgproc.GaussianBlur(threshold, threshold, new Size(11,11), 0, 0);
+                if(i==0)
+                    mOutput=threshold.clone();
+                else
+                    Core.add(mOutput, threshold, mOutput);
+            }
+            Imgproc.medianBlur(mOutput, mOutput, 11);
+            Imgproc.dilate(mOutput, mOutput, kernel);
+            Imgproc.erode(mOutput, mOutput, kernel);
 
-        // remove some noise
-        Imgproc.blur(frame, blurredImage, new Size(7, 7));
+            List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 
-        // convert the frame to HSV
-        Imgproc.cvtColor(blurredImage, hsvImage, Imgproc.COLOR_BGR2HSV);
+            Imgproc.findContours(mOutput, contours, mHierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+            // Find max contour area
+            double maxArea = 0;
+            Iterator<MatOfPoint> each = contours.iterator();
+            int i=0, i_max=0;
+            while (each.hasNext()) {
+                MatOfPoint wrapper = each.next();
+                double area = Imgproc.contourArea(wrapper);
+                if (area > maxArea){
+                    maxArea = area;
+                    i_max = i;
+                }
+                i++;
+            }
 
-        // morphological operators
-        // dilate with large element, erode with small ones
-        Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(24, 24));
-        Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(12, 12));
+            // For drawing rectangle contours
+            for ( int contourIdx=0; contourIdx < contours.size(); contourIdx++ )
+            {
+                // Minimum size allowed for consideration
+                MatOfPoint2f approxCurve = new MatOfPoint2f();
+                MatOfPoint2f contour2f = new MatOfPoint2f( contours.get(contourIdx).toArray() );
+                //Processing on mMOP2f1 which is in type MatOfPoint2f
+                double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
+                Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
+                //Convert back to MatOfPoint
+                MatOfPoint points = new MatOfPoint( approxCurve.toArray() );
+                // Get bounding rect of contour
+                Rect rect = Imgproc.boundingRect(points);
+                Imgproc.rectangle(mRgba, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0, 255), 3);
+            }
 
-        Imgproc.erode(mask, morphOutput, erodeElement);
-        Imgproc.erode(mask, morphOutput, erodeElement);
+            Imgproc.drawContours(mRgba, contours, i_max, CONTOUR_COLOR);
 
-        Imgproc.dilate(mask, morphOutput, dilateElement);
-        Imgproc.dilate(mask, morphOutput, dilateElement);
-
-        // show the partial output
-        //this.onFXThread(this.morphProp, this.mat2Image(morphOutput));
-
-        return morphOutput;
+            if(Width/3 > 320)	Imgproc.resize(mRgba, mRgba, new Size(Width, Height));
+        }
+        return mRgba;
     }
 
     @Override

@@ -11,8 +11,17 @@ import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -43,6 +52,24 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             }
         }
     };
+
+    // Own implementation
+    Mat backgroundFrame;
+
+    Mat frame;
+    Mat currentFrame;
+    Mat previosFrame;
+    Mat resultFrame;
+    Mat v = new Mat();
+    Long currentFrameLong;
+    Scalar scalar1 = new Scalar(0,0,255);
+    Scalar scalar2 = new Scalar(0,255,0);
+
+    Size size = new Size(3,3);
+    int index = 0;
+    int sensivity = 75;
+    double maxArea = 300;
+    boolean started = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +117,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     @Override
     public void onCameraViewStarted(int width, int height) {
+        backgroundFrame = new Mat(height, width, CvType.CV_8UC4);
+        currentFrame = new Mat(height, width, CvType.CV_8UC4);
+        previosFrame = new Mat(height, width, CvType.CV_8UC4);
+        resultFrame = new Mat(height, width, CvType.CV_8UC4);
+
         mRgba = new Mat(height, width, CvType.CV_8UC4);
         mGray = new Mat(height, width, CvType.CV_8UC1);
     }
@@ -101,8 +133,45 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        mRgba = inputFrame.rgba();
-        OpencvNativeClass.convertGray(mRgba.getNativeObjAddr(), mGray.getNativeObjAddr());
-        return mGray;
+        if (!started) {
+            started = true;
+            backgroundFrame = inputFrame.rgba();
+        }
+        currentFrame = inputFrame.rgba();
+
+        Core.absdiff(backgroundFrame, currentFrame, resultFrame);
+        Imgproc.threshold(resultFrame, resultFrame, 80, 255, Imgproc.THRESH_BINARY);
+        Imgproc.erode(resultFrame, resultFrame, Imgproc.getStructuringElement(Imgproc.MORPH_RECT, size));
+
+//        Imgproc.GaussianBlur(currentFrame,currentFrame,size,0);
+
+//        if (index > 1) {
+//            Core.subtract(previosFrame, currentFrame, resultFrame);
+//            Imgproc.cvtColor(resultFrame, resultFrame, Imgproc.COLOR_BGR2GRAY);
+//            Imgproc.threshold(resultFrame, resultFrame, sensivity, 255, Imgproc.THRESH_BINARY);
+//            List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+//            Imgproc.findContours(resultFrame, contours, v, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+//            v.release();
+//
+//            boolean found = false;
+//            for (int idx = 0; idx < contours.size(); idx++) {
+//                Mat contour = contours.get(idx);
+//                double contourArea = Imgproc.contourArea(contour);
+//                if (contourArea > maxArea) {
+//                    found = true;
+//                    Rect r = Imgproc.boundingRect(contours.get(idx));
+//                    Imgproc.drawContours(currentFrame, contours, idx, scalar1);
+//                    Imgproc.rectangle(currentFrame, r.br(), r.tl(), scalar2, 1);
+//                }
+//                contour.release();
+//            }
+//
+//            if (found) {
+//                Log.d("MainActivity", "Moved");
+//            }
+//        }
+//        index++;
+//        previosFrame = currentFrame;
+        return resultFrame;
     }
 }
