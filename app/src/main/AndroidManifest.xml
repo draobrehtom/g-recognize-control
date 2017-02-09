@@ -17,7 +17,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".HandTrackingActivity"></activity>
+        <activity android:name=".HandTrackingActivity" />
+        <activity android:name=".HandTracking2Activity"></activity>
     </application>
 
 </manifest>
