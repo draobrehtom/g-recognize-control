@@ -36,6 +36,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.View.OnTouchListener;
+import android.widget.Toast;
 
 import static org.opencv.imgproc.Imgproc.ADAPTIVE_THRESH_MEAN_C;
 import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
@@ -81,10 +82,36 @@ public class HandTrackingActivity extends Activity implements OnTouchListener, C
     int[][] min_range;
     int[][] max_range;
 
+
+    // TCP-IP
+    // Implementation
+
+    public static String currentIP= "192.168.0.150";
+    public static int    currentPort = 4567;
+
+    //define callback function
+    public void tcpHandler(String ip, int port, String query, Client.MyCallbackInterface callback) {
+        new Client(ip, port, query, callback).execute();
+    }
+
+    public void sendToServer(String message) {
+        Log.i(TAG, "BEGIN sendToServer");
+        if (message == "right" || message == "left") {
+            Log.i(TAG, "IF sendToServer");
+            tcpHandler(currentIP, currentPort, message, new Client.MyCallbackInterface() {
+                @Override
+                public void tcpHandler(String response) {
+                    Log.i(TAG, "SERVER: " + response);
+                }
+            });
+        }
+    }
+
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Log.i(TAG, "called onCreate");
+
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_hand_tracking);
@@ -197,13 +224,13 @@ public class HandTrackingActivity extends Activity implements OnTouchListener, C
 
 
             if (lcontours.size() > rcontours.size()) {
-                messageDisplay = "Left";
+                messageDisplay = "left";
             } else if (lcontours.size() < rcontours.size()) {
-                messageDisplay = "Right";
+                messageDisplay = "right";
             } else {
                 messageDisplay = "Undefined";
             }
-
+            sendToServer(messageDisplay);
             Log.i(TAG, messageDisplay);
 
 
