@@ -11,14 +11,67 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.example.draobrehtom.gesturerecognizecontrol.MainActivity">
 
-    <TextView
+
+    <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!" />
+        android:inputType="textPersonName"
+        android:ems="10"
+        android:id="@+id/ipText"
+        android:layout_alignParentTop="true"
+        android:layout_alignStart="@+id/portTxt"
+        android:layout_marginTop="66dp"
+        android:layout_alignParentEnd="true"
+        android:text="192.168.0.150"
+        android:hint="IP" />
 
-    <org.opencv.android.JavaCameraView
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:id="@+id/java_camera_view"
-        opencv:camera_id="1"/>
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:inputType="textPersonName"
+        android:text="4567"
+        android:ems="10"
+        android:id="@+id/portTxt"
+        android:layout_below="@+id/ipText"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:hint="Port" />
+
+    <Button
+        android:text="Connect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/portTxt"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="15dp"
+        android:id="@+id/connectBtn"
+        android:layout_alignParentEnd="true"
+        android:onClick="connectClick" />
+
+    <TextView
+        android:text="Enter IP and Port of your server and press Connect buttton."
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:id="@+id/welcomeLbl" />
+
+    <Button
+        android:text="Clear"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/clearBtn"
+        android:onClick="onClearClick"
+        android:layout_centerVertical="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:text="..."
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/clearBtn"
+        android:id="@+id/responseLbl"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentStart="true" />
 </RelativeLayout>

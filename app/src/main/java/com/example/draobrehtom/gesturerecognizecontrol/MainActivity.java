@@ -5,6 +5,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -23,9 +27,18 @@ import org.opencv.imgproc.Imgproc;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
+public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
+
+
+    public static String currentIP;
+    public static int    currentPort;
+
+    TextView textResponse;
+    EditText editTextAddress, editTextPort;
+    Button buttonConnect, buttonClear;
+
 
     static {
         System.loadLibrary("MyLibs");
@@ -37,141 +50,49 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         }
     }
 
-    JavaCameraView javaCameraView;
-    Mat mRgba, mGray;
-    BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case BaseLoaderCallback.SUCCESS:
-                    javaCameraView.enableView();
-                    break;
-                default:
-                    super.onManagerConnected(status);
-                    break;
-            }
-        }
-    };
+    //define callback function
+    public void tcpHandler(String ip, int port, String query, Client.MyCallbackInterface callback) {
+        new Client(ip, port, query, callback).execute();
+    }
 
-    // Own implementation
-    Mat backgroundFrame;
-
-    Mat frame;
-    Mat currentFrame;
-    Mat previosFrame;
-    Mat resultFrame;
-    Mat v = new Mat();
-    Long currentFrameLong;
-    Scalar scalar1 = new Scalar(0,0,255);
-    Scalar scalar2 = new Scalar(0,255,0);
-
-    Size size = new Size(3,3);
-    int index = 0;
-    int sensivity = 75;
-    double maxArea = 300;
-    boolean started = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        javaCameraView = (JavaCameraView) findViewById(R.id.java_camera_view);
-        javaCameraView.setVisibility(View.VISIBLE);
-        javaCameraView.setCvCameraViewListener(this);
-        Intent intent = new Intent(this, HandTrackingActivity.class);
-        startActivity(intent);
+        setContentView(R.layout.activity_main);
+        editTextAddress = (EditText) findViewById(R.id.ipText);
+        editTextPort = (EditText) findViewById(R.id.portTxt);
+        buttonConnect = (Button) findViewById(R.id.connectBtn);
+        buttonClear = (Button) findViewById(R.id.clearBtn);
+        textResponse = (TextView) findViewById(R.id.responseLbl);
+
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (javaCameraView != null) {
-            javaCameraView.disableView();
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (OpenCVLoader.initDebug()) {
-            Log.d(TAG, "OpenCV loaded successfully");
-            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+    public void connectClick(View v) {
+        currentIP = editTextAddress.getText().toString();
+        if (!currentIP.isEmpty()) {
+            currentPort = Integer.parseInt(editTextPort.getText().toString());
+            tcpHandler(currentIP, currentPort, "authqwerty", new Client.MyCallbackInterface() {
+                @Override
+                public void tcpHandler(String response) {
+                        Intent htrackIntent = new Intent(MainActivity.this, HandTrackingActivity.class);
+                        startActivity(htrackIntent);
+                        Toast.makeText(getApplicationContext(), "You are connected.", Toast.LENGTH_SHORT).show();
+//                    } else {
+//                        Toast.makeText(getApplicationContext(), "Unable to connect...", Toast.LENGTH_SHORT).show();
+//                    }
+                }
+            });
         } else {
-            Log.d(TAG, "OpenCV not loaded");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, this, mLoaderCallback);
-        }
-
-        if (javaCameraView == null) {
-            javaCameraView.enableView();
+            Toast.makeText(getApplicationContext(), "Fill IP/port data.", Toast.LENGTH_SHORT).show();
         }
     }
 
-    @Override
-    protected void onDestroy () {
-        super.onDestroy();
-        if (javaCameraView != null) {
-            javaCameraView.disableView();
-        }
-    }
+    public void onClearClick(View v) {
+        editTextAddress.setText("");
+        editTextPort.setText("");
 
-    @Override
-    public void onCameraViewStarted(int width, int height) {
-        backgroundFrame = new Mat(height, width, CvType.CV_8UC4);
-        currentFrame = new Mat(height, width, CvType.CV_8UC4);
-        previosFrame = new Mat(height, width, CvType.CV_8UC4);
-        resultFrame = new Mat(height, width, CvType.CV_8UC4);
-
-        mRgba = new Mat(height, width, CvType.CV_8UC4);
-        mGray = new Mat(height, width, CvType.CV_8UC1);
-    }
-
-    @Override
-    public void onCameraViewStopped() {
-        mRgba.release();
-    }
-
-    @Override
-    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        if (!started) {
-            started = true;
-            backgroundFrame = inputFrame.rgba();
-        }
-        currentFrame = inputFrame.rgba();
-
-        Core.absdiff(backgroundFrame, currentFrame, resultFrame);
-        Imgproc.threshold(resultFrame, resultFrame, 80, 255, Imgproc.THRESH_BINARY);
-        Imgproc.erode(resultFrame, resultFrame, Imgproc.getStructuringElement(Imgproc.MORPH_RECT, size));
-
-//        Imgproc.GaussianBlur(currentFrame,currentFrame,size,0);
-
-//        if (index > 1) {
-//            Core.subtract(previosFrame, currentFrame, resultFrame);
-//            Imgproc.cvtColor(resultFrame, resultFrame, Imgproc.COLOR_BGR2GRAY);
-//            Imgproc.threshold(resultFrame, resultFrame, sensivity, 255, Imgproc.THRESH_BINARY);
-//            List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
-//            Imgproc.findContours(resultFrame, contours, v, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
-//            v.release();
-//
-//            boolean found = false;
-//            for (int idx = 0; idx < contours.size(); idx++) {
-//                Mat contour = contours.get(idx);
-//                double contourArea = Imgproc.contourArea(contour);
-//                if (contourArea > maxArea) {
-//                    found = true;
-//                    Rect r = Imgproc.boundingRect(contours.get(idx));
-//                    Imgproc.drawContours(currentFrame, contours, idx, scalar1);
-//                    Imgproc.rectangle(currentFrame, r.br(), r.tl(), scalar2, 1);
-//                }
-//                contour.release();
-//            }
-//
-//            if (found) {
-//                Log.d("MainActivity", "Moved");
-//            }
-//        }
-//        index++;
-//        previosFrame = currentFrame;
-        return resultFrame;
     }
 }
